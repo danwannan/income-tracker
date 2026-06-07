@@ -224,7 +224,23 @@
         .chart-container { min-height: 380px; height: 380px; }
 
         #swipe-container::-webkit-scrollbar { display: none; }
-        #swipe-container { scrollbar-width: none; -ms-overflow-style: none; }
+        #swipe-container {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            scroll-snap-type: x mandatory;
+            scroll-behavior: smooth;
+            overflow-x: scroll;
+            overflow-y: hidden;
+        }
+        #swipe-container > div {
+            scroll-snap-align: start;
+            scroll-snap-stop: always;
+        }
+        /* 允许页面内部垂直滚动 */
+        #page-record, #page-stats, #page-memo {
+            touch-action: pan-y;
+            overscroll-behavior-y: contain;
+        }
     </style>
 </head>
 <body class="text-gray-900 min-h-screen relative">
@@ -298,10 +314,10 @@
             </div>
 
             <!-- 滑动页面容器 -->
-            <div id="swipe-container" class="flex-1 overflow-x-auto snap-x snap-mandatory scroll-smooth flex" style="scrollbar-width: none; -ms-overflow-style: none;">
+            <div id="swipe-container" class="flex-1 flex">
 
                 <!-- ===== 第一页：收入录入 + 历史列表 ===== -->
-                <div id="page-record" class="snap-start flex-shrink-0 w-full flex flex-col px-4 pb-6 space-y-4 overflow-y-auto" style="scrollbar-width: none;">
+                <div id="page-record" class="flex-shrink-0 w-full flex flex-col px-4 pb-6 space-y-4 overflow-y-auto">
 
                     <!-- 录入表单 -->
                     <div class="glass-card p-5">
@@ -364,7 +380,7 @@
                 </div>
 
                 <!-- ===== 第二页：统计 + 图表 ===== -->
-                <div id="page-stats" class="snap-start flex-shrink-0 w-full flex flex-col px-4 pb-6 space-y-4 overflow-y-auto" style="scrollbar-width: none;">
+                <div id="page-stats" class="flex-shrink-0 w-full flex flex-col px-4 pb-6 space-y-4 overflow-y-auto">
 
                     <!-- 年收入统计卡片 -->
                     <div class="glass-card p-5">
@@ -390,7 +406,7 @@
                 </div>
 
                 <!-- ===== 第三页：往来（尾款/借款登记） ===== -->
-                <div id="page-memo" class="snap-start flex-shrink-0 w-full flex flex-col px-4 pb-6 space-y-4 overflow-y-auto" style="scrollbar-width: none;">
+                <div id="page-memo" class="flex-shrink-0 w-full flex flex-col px-4 pb-6 space-y-4 overflow-y-auto">
 
                     <!-- 往来统计 -->
                     <div class="glass-card p-4">
@@ -1084,15 +1100,9 @@
         const INACTIVE_DOT = 'w-1.5 h-1.5 rounded-full bg-gray-300 transition-all';
 
         function switchToPage(page) {
-            const pw = swipeContainer.offsetWidth;
-            swipeContainer.scrollTo({ left: (page - 1) * pw, behavior: 'smooth' });
-            [tabPage1, tabPage2, tabPage3].forEach((t, i) => {
-                t.className = (i === page - 1) ? ACTIVE_TAB : INACTIVE_TAB;
-            });
-            [dot1, dot2, dot3].forEach((d, i) => {
-                d.className = (i === page - 1) ? ACTIVE_DOT : INACTIVE_DOT;
-            });
-            // 切换到备忘页时加载数据
+            const target = swipeContainer.children[page - 1];
+            if (target) target.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+            updateTabState(page - 1);
             if (page === 3) loadMemoData();
         }
 
@@ -1100,17 +1110,34 @@
         tabPage2.addEventListener('click', () => switchToPage(2));
         tabPage3.addEventListener('click', () => switchToPage(3));
 
-        swipeContainer.addEventListener('scroll', () => {
+        // 用 scrollend 事件精准检测页面切换
+        swipeContainer.addEventListener('scrollend', () => {
             const pw = swipeContainer.offsetWidth;
             const idx = Math.round(swipeContainer.scrollLeft / pw);
+            updateTabState(idx);
+            if (idx === 2) loadMemoData();
+        });
+
+        // 兼容不支持 scrollend 的浏览器，用 debounce
+        let scrollDebounce;
+        swipeContainer.addEventListener('scroll', () => {
+            clearTimeout(scrollDebounce);
+            scrollDebounce = setTimeout(() => {
+                const pw = swipeContainer.offsetWidth;
+                const idx = Math.round(swipeContainer.scrollLeft / pw);
+                updateTabState(idx);
+                if (idx === 2) loadMemoData();
+            }, 150);
+        }, { passive: true });
+
+        function updateTabState(idx) {
             [tabPage1, tabPage2, tabPage3].forEach((t, i) => {
                 t.className = (i === idx) ? ACTIVE_TAB : INACTIVE_TAB;
             });
             [dot1, dot2, dot3].forEach((d, i) => {
                 d.className = (i === idx) ? ACTIVE_DOT : INACTIVE_DOT;
             });
-            if (idx === 2) loadMemoData();
-        }, { passive: true });
+        }
 
         switchToPage(1);
 
