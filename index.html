@@ -510,6 +510,9 @@
             </div>
         </div>
 
+        <!-- ========== 粒子特效画布 ========== -->
+        <canvas id="particle-canvas" class="fixed inset-0 pointer-events-none z-[100]" style="width:100vw;height:100vh;"></canvas>
+
         <!-- ========== Toast ========== -->
         <div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 hidden">
             <div class="glass-toast text-white text-sm px-5 py-3 flex items-center gap-2 toast-enter">
@@ -1033,18 +1036,29 @@
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) { showToast('请先登录', '⚠️'); return; }
 
+            // 新增时：记录旧统计用于检测里程碑
+            let oldYearly = 0, oldToday = 0;
+            if (!editingId) {
+                const { data: prev } = await supabase.from('incomes').select('amount, created_at');
+                const nowYear = new Date().getFullYear();
+                const todayStr = new Date().toISOString().substring(0, 10);
+                (prev || []).forEach(r => {
+                    const a = parseFloat(r.amount) || 0;
+                    if (r.created_at && new Date(r.created_at).getFullYear() === nowYear) oldYearly += a;
+                    if (r.created_at && r.created_at.substring(0, 10) === todayStr) oldToday += a;
+                });
+            }
+
             btnSubmit.disabled = true;
             btnSubmit.innerHTML = '<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> 保存中...';
 
             let error;
             if (editingId) {
-                // 修改模式
                 const result = await supabase.from('incomes').update({
                     amount: amount, source: source || '未命名收入', remark: remark || null
                 }).eq('id', editingId);
                 error = result.error;
             } else {
-                // 新增模式
                 const result = await supabase.from('incomes').insert({
                     user_id: user.id, amount: amount, source: source || '未命名收入', remark: remark || null
                 });
@@ -1057,6 +1071,22 @@
             showToast(editingId ? '修改成功！' : '记录成功！', '✅');
             cancelEdit();
             await loadAllData();
+
+            // 检测里程碑（仅新增时）
+            if (!editingId) {
+                const newYearly = oldYearly + amount;
+                const newToday = oldToday + amount;
+                // 年收入突破万元大关
+                const oldWan = Math.floor(oldYearly / 10000);
+                const newWan = Math.floor(newYearly / 10000);
+                if (newWan > oldWan && newWan >= 1) {
+                    burstConfetti(newWan);
+                }
+                // 日收入突破 1000
+                if (oldToday < 1000 && newToday >= 1000) {
+                    moneyRain();
+                }
+            }
         });
 
         // 金额输入增强
@@ -1339,6 +1369,181 @@
             if (chartInstance) chartInstance.dispose();
             if (chartResizeObserver) chartResizeObserver.disconnect();
         });
+
+        // ============================================================
+        // 粒子特效系统
+        // ============================================================
+        const particleCanvas = $('#particle-canvas');
+        const pCtx = particleCanvas.getContext('2d');
+        let particles = [];
+        let animId = null;
+
+        function resizeCanvas() {
+            particleCanvas.width = window.innerWidth;
+            particleCanvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function spawnParticle(x, y, opts = {}) {
+            const colors = opts.colors || ['#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#3b82f6', '#ec4899', '#fbbf24', '#34d399'];
+            const vx = (Math.random() - 0.5) * (opts.speedX || 12);
+            const vy = (Math.random() * (opts.speedY || -14)) - 4;
+            return {
+                x, y, vx, vy,
+                size: Math.random() * (opts.size || 8) + 3,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                life: 1,
+                decay: Math.random() * 0.015 + 0.008,
+                gravity: opts.gravity ?? 0.12,
+                rotation: Math.random() * Math.PI * 2,
+                rotSpeed: (Math.random() - 0.5) * 0.3,
+                shape: opts.shape || 'circle'
+            };
+        }
+
+        function animateParticles() {
+            pCtx.clearRect(0, 0, particleCanvas.width, particleCanvas.height);
+            particles = particles.filter(p => p.life > 0);
+
+            if (particles.length === 0) {
+                animId = null;
+                return;
+            }
+
+            particles.forEach(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += p.gravity;
+                p.vx *= 0.99;
+                p.life -= p.decay;
+                p.rotation += p.rotSpeed;
+
+                pCtx.save();
+                pCtx.globalAlpha = p.life;
+                pCtx.translate(p.x, p.y);
+                pCtx.rotate(p.rotation);
+                pCtx.fillStyle = p.color;
+
+                if (p.shape === 'money') {
+                    pCtx.font = `${p.size * 3}px serif`;
+                    pCtx.fillText('¥', -p.size * 1.5, p.size * 1.5);
+                } else if (p.shape === 'star') {
+                    drawStar(pCtx, 0, 0, p.size);
+                } else {
+                    pCtx.beginPath();
+                    pCtx.arc(0, 0, p.size, 0, Math.PI * 2);
+                    pCtx.fill();
+                }
+                pCtx.restore();
+            });
+
+            animId = requestAnimationFrame(animateParticles);
+        }
+
+        function drawStar(ctx, cx, cy, r) {
+            const spikes = 5, outerR = r, innerR = r * 0.4;
+            ctx.beginPath();
+            for (let i = 0; i < spikes * 2; i++) {
+                const radius = i % 2 === 0 ? outerR : innerR;
+                const angle = (i * Math.PI) / spikes - Math.PI / 2;
+                const x = cx + Math.cos(angle) * radius;
+                const y = cy + Math.sin(angle) * radius;
+                i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function startAnimation(pts) {
+            particles.push(...pts);
+            if (!animId) animId = requestAnimationFrame(animateParticles);
+        }
+
+        /** 万元突破：中心爆炸 + 烟花 */
+        function burstConfetti(wanLevel) {
+            const cx = particleCanvas.width / 2;
+            const cy = particleCanvas.height / 2;
+            const pts = [];
+
+            // 金色光环
+            for (let i = 0; i < 60; i++) {
+                const angle = (Math.PI * 2 / 60) * i;
+                const speed = 6 + Math.random() * 8;
+                pts.push({
+                    x: cx, y: cy,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - 3,
+                    size: 4 + Math.random() * 6,
+                    color: ['#f59e0b', '#fbbf24', '#fcd34d'][Math.floor(Math.random() * 3)],
+                    life: 1, decay: 0.012 + Math.random() * 0.01,
+                    gravity: 0.08, rotation: 0, rotSpeed: 0.2, shape: 'star'
+                });
+            }
+            // 绿色粒子雨
+            for (let i = 0; i < 80; i++) {
+                pts.push(spawnParticle(cx, cy - 40, {
+                    colors: ['#10b981', '#34d399', '#6ee7b7', '#a7f3d0', '#fbbf24'],
+                    speedX: 16, speedY: 18, size: 7, gravity: 0.15
+                }));
+            }
+            startAnimation(pts);
+
+            // 延迟显示大字
+            setTimeout(() => {
+                const bigText = document.createElement('div');
+                bigText.className = 'fixed inset-0 flex items-center justify-center pointer-events-none z-[101]';
+                bigText.innerHTML = `<div style="animation: celebratePop 1.2s ease-out forwards; text-align:center;">
+                    <p style="font-size:56px;font-weight:900;color:#f59e0b;text-shadow:0 4px 20px rgba(245,158,11,0.4);">🎉</p>
+                    <p style="font-size:22px;font-weight:800;color:#1f2937;margin-top:8px;text-shadow:0 2px 12px rgba(0,0,0,0.1);">年收入突破 ${wanLevel} 万元！</p>
+                </div>`;
+                document.body.appendChild(bigText);
+                setTimeout(() => bigText.remove(), 1300);
+            }, 200);
+        }
+
+        /** 日收破千：钞票雨 */
+        function moneyRain() {
+            const pts = [];
+            for (let i = 0; i < 50; i++) {
+                pts.push({
+                    x: Math.random() * particleCanvas.width,
+                    y: -20 - Math.random() * 100,
+                    vx: (Math.random() - 0.5) * 3,
+                    vy: Math.random() * 3 + 1,
+                    size: 10 + Math.random() * 16,
+                    color: ['#10b981', '#059669', '#f59e0b'][Math.floor(Math.random() * 3)],
+                    life: 1, decay: 0.003 + Math.random() * 0.005,
+                    gravity: 0.04, rotation: 0, rotSpeed: 0.05, shape: 'money'
+                });
+            }
+            startAnimation(pts);
+
+            setTimeout(() => {
+                const banner = document.createElement('div');
+                banner.className = 'fixed top-0 left-0 right-0 flex justify-center pointer-events-none z-[101]';
+                banner.style.animation = 'slideDown 0.4s ease-out forwards';
+                banner.innerHTML = `<div style="background:linear-gradient(135deg,#10b981,#059669);color:#fff;padding:14px 28px;border-radius:0 0 20px 20px;font-weight:700;font-size:16px;box-shadow:0 8px 30px rgba(16,185,129,0.3);">
+                    🔥 今日收入突破 ¥1000！
+                </div>`;
+                document.body.appendChild(banner);
+                setTimeout(() => { banner.style.opacity = '0'; banner.style.transition = 'opacity 0.5s'; }, 2000);
+                setTimeout(() => banner.remove(), 2600);
+            }, 300);
+        }
+
+        // 庆祝动画 keyframe
+        const celebStyle = document.createElement('style');
+        celebStyle.textContent = `
+            @keyframes celebratePop {
+                0% { transform: scale(0.3); opacity: 0; }
+                30% { transform: scale(1.15); opacity: 1; }
+                50% { transform: scale(0.95); }
+                70% { transform: scale(1.05); }
+                100% { transform: scale(1); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(celebStyle);
 
         // ============================================================
         // 启动
