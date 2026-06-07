@@ -289,10 +289,11 @@
         <main id="main-section" class="hidden flex-1 flex flex-col">
 
             <!-- 页面切换 Tab -->
-            <div class="flex items-center justify-center gap-2 py-3 px-4">
+            <div class="flex items-center justify-center py-3 px-4">
                 <div class="glass-tab flex">
-                    <button id="tab-page1" class="text-sm font-medium min-h-[34px] px-5 rounded-[10px] transition-all text-white bg-emerald-500 shadow-sm">记 录</button>
-                    <button id="tab-page2" class="text-sm font-medium min-h-[34px] px-5 rounded-[10px] transition-all text-gray-400">统 计</button>
+                    <button id="tab-page1" class="text-sm font-medium min-h-[34px] px-4 rounded-[10px] transition-all text-white bg-emerald-500 shadow-sm">记 录</button>
+                    <button id="tab-page2" class="text-sm font-medium min-h-[34px] px-4 rounded-[10px] transition-all text-gray-400">统 计</button>
+                    <button id="tab-page3" class="text-sm font-medium min-h-[34px] px-4 rounded-[10px] transition-all text-gray-400">备 忘</button>
                 </div>
             </div>
 
@@ -387,12 +388,94 @@
                         <p id="chart-empty-hint" class="text-xs text-gray-400 text-center mt-2 hidden">暂无数据，添加一笔收入吧 ✨</p>
                     </div>
                 </div>
+
+                <!-- ===== 第三页：备忘（尾款/借款登记） ===== -->
+                <div id="page-memo" class="snap-start flex-shrink-0 w-full flex flex-col px-4 pb-6 space-y-4 overflow-y-auto" style="scrollbar-width: none;">
+
+                    <!-- 备忘统计 -->
+                    <div class="glass-card p-4">
+                        <p class="text-xs text-gray-400 mb-3">备忘统计</p>
+                        <div class="grid grid-cols-3 gap-3 text-center">
+                            <div class="bg-red-50/50 rounded-xl p-3 backdrop-blur">
+                                <p class="text-[10px] text-red-400 mb-0.5">待收尾款</p>
+                                <p id="memo-stat-weikuan" class="text-base font-bold text-red-500">¥0</p>
+                            </div>
+                            <div class="bg-amber-50/50 rounded-xl p-3 backdrop-blur">
+                                <p class="text-[10px] text-amber-500 mb-0.5">待还借款</p>
+                                <p id="memo-stat-jiekuan" class="text-base font-bold text-amber-600">¥0</p>
+                            </div>
+                            <div class="bg-emerald-50/50 rounded-xl p-3 backdrop-blur">
+                                <p class="text-[10px] text-emerald-500 mb-0.5">借出款项</p>
+                                <p id="memo-stat-jiechu" class="text-base font-bold text-emerald-600">¥0</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 备忘录入表单 -->
+                    <div class="glass-card p-5">
+                        <p class="text-sm font-medium text-gray-700 mb-3" id="memo-form-title">登记备忘</p>
+                        <form id="form-memo" class="space-y-3">
+                            <input type="hidden" id="memo-edit-id" value="">
+                            <div>
+                                <label class="block text-xs text-gray-400 mb-1 ml-1">姓名 <span class="text-red-400">*</span></label>
+                                <input type="text" id="memo-name" placeholder="对方姓名"
+                                       class="glass-input w-full px-4 py-3 text-sm text-gray-900 placeholder-gray-400 min-h-[44px]">
+                            </div>
+                            <!-- 类型选择 -->
+                            <div>
+                                <label class="block text-xs text-gray-400 mb-1.5 ml-1">类型</label>
+                                <div class="flex gap-2">
+                                    <button type="button" data-memo-type="尾款" class="memo-type-btn flex-1 py-2.5 text-xs font-medium rounded-xl transition-all bg-red-50 text-red-500 border border-red-200 min-h-[40px]">尾款</button>
+                                    <button type="button" data-memo-type="借款" class="memo-type-btn flex-1 py-2.5 text-xs font-medium rounded-xl transition-all bg-amber-50 text-amber-600 border border-amber-200 min-h-[40px]">借款</button>
+                                    <button type="button" data-memo-type="借出" class="memo-type-btn flex-1 py-2.5 text-xs font-medium rounded-xl transition-all bg-white/50 text-gray-400 border border-gray-150 min-h-[40px]">借出</button>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-400 mb-1 ml-1">金额 <span class="text-red-400">*</span></label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">¥</span>
+                                    <input type="text" inputmode="decimal" id="memo-amount" placeholder="0.00"
+                                           class="glass-input w-full pl-9 pr-4 py-3 text-sm text-gray-900 placeholder-gray-400 min-h-[44px]">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-400 mb-1 ml-1">备注</label>
+                                <input type="text" id="memo-remark" placeholder="可选备注"
+                                       class="glass-input w-full px-4 py-3 text-sm text-gray-900 placeholder-gray-400 min-h-[44px]">
+                            </div>
+                            <div class="flex gap-2">
+                                <button type="submit" id="memo-btn-submit"
+                                        class="glass-btn-primary flex-1 py-3 text-sm min-h-[44px] flex items-center justify-center gap-1.5">
+                                    <span>✓</span> 登 记
+                                </button>
+                                <button type="button" id="memo-btn-cancel"
+                                        class="hidden px-4 py-3 rounded-xl glass-btn-secondary text-sm min-h-[44px]">
+                                    取消
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- 备忘列表 -->
+                    <div class="glass-card p-5 flex-1">
+                        <p class="text-sm font-medium text-gray-700 mb-3">备忘列表</p>
+                        <div id="memo-list-loading" class="flex justify-center py-6">
+                            <div class="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                        </div>
+                        <div id="memo-list-empty" class="hidden text-center py-8">
+                            <p class="text-3xl mb-2">📋</p>
+                            <p class="text-sm text-gray-400">暂无备忘记录</p>
+                        </div>
+                        <div id="memo-list-container" class="space-y-2 max-h-[360px] overflow-y-auto pr-1"></div>
+                    </div>
+                </div>
             </div>
 
             <!-- 页面指示器 -->
             <div class="flex items-center justify-center gap-2 py-2 pb-4">
                 <span id="dot1" class="w-1.5 h-1.5 rounded-full bg-emerald-500 transition-all"></span>
-                <span id="dot2" class="w-1.5 h-1.5 rounded-full bg-gray-200 transition-all"></span>
+                <span id="dot2" class="w-1.5 h-1.5 rounded-full bg-gray-300 transition-all"></span>
+                <span id="dot3" class="w-1.5 h-1.5 rounded-full bg-gray-300 transition-all"></span>
             </div>
 
         </main>
@@ -475,6 +558,19 @@
         // ---- 搜索相关 ----
         let allRows = [];           // 存储全部数据用于搜索
         let searchKeyword = '';     // 当前搜索关键词
+
+        // ---- 备忘相关 ----
+        const formMemo      = $('#form-memo');
+        const memoEditId    = $('#memo-edit-id');
+        const memoBtnSubmit = $('#memo-btn-submit');
+        const memoBtnCancel = $('#memo-btn-cancel');
+        const memoFormTitle = $('#memo-form-title');
+        const memoListCont  = $('#memo-list-container');
+        const memoListLoad  = $('#memo-list-loading');
+        const memoListEmpty = $('#memo-list-empty');
+        let memoAllRows     = [];
+        let memoType        = '尾款'; // 默认类型
+        let memoDelId       = null;
 
         // ============================================================
         // 工具函数
@@ -977,46 +1073,237 @@
         const swipeContainer = $('#swipe-container');
         const tabPage1 = $('#tab-page1');
         const tabPage2 = $('#tab-page2');
+        const tabPage3 = $('#tab-page3');
         const dot1 = $('#dot1');
         const dot2 = $('#dot2');
+        const dot3 = $('#dot3');
 
-        const ACTIVE_TAB = 'text-sm font-medium min-h-[34px] px-5 rounded-[10px] transition-all text-white bg-emerald-500 shadow-sm';
-        const INACTIVE_TAB = 'text-sm font-medium min-h-[34px] px-5 rounded-[10px] transition-all text-gray-400';
+        const ACTIVE_TAB = 'text-sm font-medium min-h-[34px] px-4 rounded-[10px] transition-all text-white bg-emerald-500 shadow-sm';
+        const INACTIVE_TAB = 'text-sm font-medium min-h-[34px] px-4 rounded-[10px] transition-all text-gray-400';
+        const ACTIVE_DOT = 'w-1.5 h-1.5 rounded-full bg-emerald-500 transition-all';
+        const INACTIVE_DOT = 'w-1.5 h-1.5 rounded-full bg-gray-300 transition-all';
 
         function switchToPage(page) {
-            if (page === 1) {
-                swipeContainer.scrollTo({ left: 0, behavior: 'smooth' });
-                tabPage1.className = ACTIVE_TAB;
-                tabPage2.className = INACTIVE_TAB;
-                dot1.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500 transition-all';
-                dot2.className = 'w-1.5 h-1.5 rounded-full bg-gray-300 transition-all';
-            } else {
-                swipeContainer.scrollTo({ left: swipeContainer.offsetWidth, behavior: 'smooth' });
-                tabPage2.className = ACTIVE_TAB;
-                tabPage1.className = INACTIVE_TAB;
-                dot2.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500 transition-all';
-                dot1.className = 'w-1.5 h-1.5 rounded-full bg-gray-300 transition-all';
-            }
+            const pw = swipeContainer.offsetWidth;
+            swipeContainer.scrollTo({ left: (page - 1) * pw, behavior: 'smooth' });
+            [tabPage1, tabPage2, tabPage3].forEach((t, i) => {
+                t.className = (i === page - 1) ? ACTIVE_TAB : INACTIVE_TAB;
+            });
+            [dot1, dot2, dot3].forEach((d, i) => {
+                d.className = (i === page - 1) ? ACTIVE_DOT : INACTIVE_DOT;
+            });
+            // 切换到备忘页时加载数据
+            if (page === 3) loadMemoData();
         }
 
         tabPage1.addEventListener('click', () => switchToPage(1));
         tabPage2.addEventListener('click', () => switchToPage(2));
+        tabPage3.addEventListener('click', () => switchToPage(3));
 
         swipeContainer.addEventListener('scroll', () => {
-            const pageWidth = swipeContainer.offsetWidth;
-            if (swipeContainer.scrollLeft < pageWidth / 2) {
-                tabPage1.className = ACTIVE_TAB; tabPage2.className = INACTIVE_TAB;
-                dot1.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500 transition-all';
-                dot2.className = 'w-1.5 h-1.5 rounded-full bg-gray-300 transition-all';
-            } else {
-                tabPage2.className = ACTIVE_TAB; tabPage1.className = INACTIVE_TAB;
-                dot2.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500 transition-all';
-                dot1.className = 'w-1.5 h-1.5 rounded-full bg-gray-300 transition-all';
-            }
+            const pw = swipeContainer.offsetWidth;
+            const idx = Math.round(swipeContainer.scrollLeft / pw);
+            [tabPage1, tabPage2, tabPage3].forEach((t, i) => {
+                t.className = (i === idx) ? ACTIVE_TAB : INACTIVE_TAB;
+            });
+            [dot1, dot2, dot3].forEach((d, i) => {
+                d.className = (i === idx) ? ACTIVE_DOT : INACTIVE_DOT;
+            });
+            if (idx === 2) loadMemoData();
         }, { passive: true });
 
-        // 初始化：确保在第一页
         switchToPage(1);
+
+        // ============================================================
+        // 备忘模块
+        // ============================================================
+
+        // 类型选择按钮
+        document.querySelectorAll('.memo-type-btn').forEach(btn => {
+            btn.addEventListener('click', function () {
+                memoType = this.dataset.memoType;
+                document.querySelectorAll('.memo-type-btn').forEach(b => {
+                    if (b.dataset.memoType === memoType) {
+                        if (memoType === '尾款') b.className = 'memo-type-btn flex-1 py-2.5 text-xs font-medium rounded-xl transition-all bg-red-50 text-red-500 border border-red-200 min-h-[40px]';
+                        else if (memoType === '借款') b.className = 'memo-type-btn flex-1 py-2.5 text-xs font-medium rounded-xl transition-all bg-amber-50 text-amber-600 border border-amber-200 min-h-[40px]';
+                        else b.className = 'memo-type-btn flex-1 py-2.5 text-xs font-medium rounded-xl transition-all bg-emerald-50 text-emerald-600 border border-emerald-200 min-h-[40px]';
+                    } else {
+                        b.className = 'memo-type-btn flex-1 py-2.5 text-xs font-medium rounded-xl transition-all bg-white/50 text-gray-400 border border-gray-150 min-h-[40px]';
+                    }
+                });
+            });
+        });
+
+        /** 加载备忘数据 */
+        async function loadMemoData() {
+            memoListLoad.classList.remove('hidden');
+            memoListCont.innerHTML = '';
+
+            const { data: rows, error } = await supabase
+                .from('memos')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            memoListLoad.classList.add('hidden');
+            if (error) { console.error('Memo load error:', error); return; }
+
+            memoAllRows = rows || [];
+            renderMemoList(memoAllRows);
+            updateMemoStats(memoAllRows);
+        }
+
+        /** 更新备忘统计 */
+        function updateMemoStats(rows) {
+            let weikuan = 0, jiekuan = 0, jiechu = 0;
+            rows.forEach(r => {
+                const a = parseFloat(r.amount) || 0;
+                if (r.type === '尾款') weikuan += a;
+                else if (r.type === '借款') jiekuan += a;
+                else if (r.type === '借出') jiechu += a;
+            });
+            $('#memo-stat-weikuan').textContent = formatMoney(weikuan);
+            $('#memo-stat-jiekuan').textContent = formatMoney(jiekuan);
+            $('#memo-stat-jiechu').textContent = formatMoney(jiechu);
+        }
+
+        /** 渲染备忘列表 */
+        function renderMemoList(rows) {
+            memoListCont.innerHTML = '';
+            if (rows.length === 0) { memoListEmpty.classList.remove('hidden'); return; }
+            memoListEmpty.classList.add('hidden');
+
+            rows.forEach((row, i) => {
+                const card = document.createElement('div');
+                card.className = 'glass-list-item px-4 py-3 animate-fade-in-up flex items-center justify-between';
+                card.style.animationDelay = (i * 30) + 'ms';
+
+                const amount = parseFloat(row.amount) || 0;
+                const typeBadge = row.type === '尾款'
+                    ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-red-50 text-red-500 font-medium">尾款</span>'
+                    : row.type === '借款'
+                        ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 font-medium">借款</span>'
+                        : '<span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 font-medium">借出</span>';
+
+                const timeStr = row.created_at
+                    ? new Date(row.created_at).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+                    : '';
+
+                card.innerHTML = `
+                    <div class="flex-1 min-w-0 mr-2">
+                        <div class="flex items-center gap-2 mb-0.5">
+                            <span class="text-sm text-gray-800 font-medium">${escapeHtml(row.name || '未知')}</span>
+                            ${typeBadge}
+                        </div>
+                        <p class="text-[11px] text-gray-400">${timeStr}${row.remark ? ' · ' + escapeHtml(row.remark) : ''}</p>
+                    </div>
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                        <span class="text-sm font-semibold ${row.type === '尾款' ? 'text-red-500' : row.type === '借款' ? 'text-amber-600' : 'text-emerald-600'}">${formatMoney(amount)}</span>
+                        <button class="memo-btn-edit w-7 h-7 flex items-center justify-center rounded-lg text-gray-300 hover:text-emerald-500 hover:bg-emerald-50/60 transition-colors" data-id="${row.id}" data-name="${escapeHtml(row.name || '')}" data-amount="${row.amount}" data-type="${row.type}" data-remark="${escapeHtml(row.remark || '')}" title="修改">✎</button>
+                        <button class="memo-btn-del w-7 h-7 flex items-center justify-center rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50/60 transition-colors" data-id="${row.id}" title="删除">✕</button>
+                    </div>
+                `;
+                memoListCont.appendChild(card);
+            });
+
+            // 绑定编辑
+            memoListCont.querySelectorAll('.memo-btn-edit').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    memoEditId.value = btn.dataset.id;
+                    $('#memo-name').value = btn.dataset.name;
+                    $('#memo-amount').value = btn.dataset.amount;
+                    $('#memo-remark').value = btn.dataset.remark;
+                    memoType = btn.dataset.type;
+                    // 更新类型按钮高亮
+                    document.querySelectorAll('.memo-type-btn').forEach(b => {
+                        const active = b.dataset.memoType === memoType;
+                        if (memoType === '尾款') b.className = active ? 'memo-type-btn flex-1 py-2.5 text-xs font-medium rounded-xl transition-all bg-red-50 text-red-500 border border-red-200 min-h-[40px]' : 'memo-type-btn flex-1 py-2.5 text-xs font-medium rounded-xl transition-all bg-white/50 text-gray-400 border border-gray-150 min-h-[40px]';
+                        else if (memoType === '借款') b.className = active ? 'memo-type-btn flex-1 py-2.5 text-xs font-medium rounded-xl transition-all bg-amber-50 text-amber-600 border border-amber-200 min-h-[40px]' : 'memo-type-btn flex-1 py-2.5 text-xs font-medium rounded-xl transition-all bg-white/50 text-gray-400 border border-gray-150 min-h-[40px]';
+                        else b.className = active ? 'memo-type-btn flex-1 py-2.5 text-xs font-medium rounded-xl transition-all bg-emerald-50 text-emerald-600 border border-emerald-200 min-h-[40px]' : 'memo-type-btn flex-1 py-2.5 text-xs font-medium rounded-xl transition-all bg-white/50 text-gray-400 border border-gray-150 min-h-[40px]';
+                    });
+                    memoBtnSubmit.innerHTML = '<span>✓</span> 保存修改';
+                    memoBtnSubmit.style.background = 'rgba(245,158,11,0.9)';
+                    memoBtnSubmit.style.boxShadow = '0 4px 16px rgba(245,158,11,0.2)';
+                    memoBtnCancel.classList.remove('hidden');
+                    memoFormTitle.textContent = '修改备忘';
+                    formMemo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                });
+            });
+
+            // 绑定删除
+            memoListCont.querySelectorAll('.memo-btn-del').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    if (!confirm('确定删除这条备忘吗？')) return;
+                    const { error } = await supabase.from('memos').delete().eq('id', btn.dataset.id);
+                    if (!error) { showToast('已删除', '🗑️'); loadMemoData(); }
+                    else showToast('删除失败', '❌');
+                });
+            });
+        }
+
+        /** 取消备忘编辑 */
+        function cancelMemoEdit() {
+            memoEditId.value = '';
+            $('#memo-name').value = '';
+            $('#memo-amount').value = '';
+            $('#memo-remark').value = '';
+            memoType = '尾款';
+            memoBtnSubmit.innerHTML = '<span>✓</span> 登 记';
+            memoBtnSubmit.style.background = '';
+            memoBtnSubmit.style.boxShadow = '';
+            memoBtnCancel.classList.add('hidden');
+            memoFormTitle.textContent = '登记备忘';
+            document.querySelectorAll('.memo-type-btn').forEach(b => {
+                if (b.dataset.memoType === '尾款') b.className = 'memo-type-btn flex-1 py-2.5 text-xs font-medium rounded-xl transition-all bg-red-50 text-red-500 border border-red-200 min-h-[40px]';
+                else b.className = 'memo-type-btn flex-1 py-2.5 text-xs font-medium rounded-xl transition-all bg-white/50 text-gray-400 border border-gray-150 min-h-[40px]';
+            });
+        }
+
+        memoBtnCancel.addEventListener('click', cancelMemoEdit);
+
+        /** 备忘表单提交 */
+        formMemo.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = $('#memo-name').value.trim();
+            const amountStr = $('#memo-amount').value.trim();
+            const remark = $('#memo-remark').value.trim();
+            const editingId = memoEditId.value;
+
+            if (!name) { showToast('请输入姓名', '⚠️'); return; }
+            if (!amountStr) { showToast('请输入金额', '⚠️'); return; }
+            const amount = parseFloat(amountStr);
+            if (isNaN(amount) || amount <= 0) { showToast('请输入有效金额', '⚠️'); return; }
+
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) { showToast('请先登录', '⚠️'); return; }
+
+            memoBtnSubmit.disabled = true;
+            memoBtnSubmit.innerHTML = '<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> 保存中...';
+
+            let error;
+            if (editingId) {
+                const r = await supabase.from('memos').update({ name, amount, type: memoType, remark: remark || null }).eq('id', editingId);
+                error = r.error;
+            } else {
+                const r = await supabase.from('memos').insert({ user_id: user.id, name, amount, type: memoType, remark: remark || null });
+                error = r.error;
+            }
+
+            memoBtnSubmit.disabled = false;
+            if (error) { showToast('保存失败：' + error.message, '❌'); return; }
+
+            showToast(editingId ? '修改成功！' : '登记成功！', '✅');
+            cancelMemoEdit();
+            loadMemoData();
+        });
+
+        // 备忘金额输入过滤
+        $('#memo-amount').addEventListener('input', function () {
+            let val = this.value.replace(/[^\d.]/g, '');
+            const parts = val.split('.');
+            if (parts.length > 2) val = parts[0] + '.' + parts.slice(1).join('');
+            if (parts.length === 2 && parts[1].length > 2) val = parts[0] + '.' + parts[1].substring(0, 2);
+            this.value = val;
+        });
 
         // ============================================================
         // 清理
