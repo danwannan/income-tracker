@@ -293,7 +293,7 @@
                 <div class="glass-tab flex">
                     <button id="tab-page1" class="text-sm font-medium min-h-[34px] px-4 rounded-[10px] transition-all text-white bg-emerald-500 shadow-sm">记 录</button>
                     <button id="tab-page2" class="text-sm font-medium min-h-[34px] px-4 rounded-[10px] transition-all text-gray-400">统 计</button>
-                    <button id="tab-page3" class="text-sm font-medium min-h-[34px] px-4 rounded-[10px] transition-all text-gray-400">备 忘</button>
+                    <button id="tab-page3" class="text-sm font-medium min-h-[34px] px-4 rounded-[10px] transition-all text-gray-400">往 来</button>
                 </div>
             </div>
 
@@ -389,12 +389,12 @@
                     </div>
                 </div>
 
-                <!-- ===== 第三页：备忘（尾款/借款登记） ===== -->
+                <!-- ===== 第三页：往来（尾款/借款登记） ===== -->
                 <div id="page-memo" class="snap-start flex-shrink-0 w-full flex flex-col px-4 pb-6 space-y-4 overflow-y-auto" style="scrollbar-width: none;">
 
-                    <!-- 备忘统计 -->
+                    <!-- 往来统计 -->
                     <div class="glass-card p-4">
-                        <p class="text-xs text-gray-400 mb-3">备忘统计</p>
+                        <p class="text-xs text-gray-400 mb-3">往来统计</p>
                         <div class="grid grid-cols-3 gap-3 text-center">
                             <div class="bg-red-50/50 rounded-xl p-3 backdrop-blur">
                                 <p class="text-[10px] text-red-400 mb-0.5">待收尾款</p>
@@ -411,9 +411,9 @@
                         </div>
                     </div>
 
-                    <!-- 备忘录入表单 -->
+                    <!-- 往来录入表单 -->
                     <div class="glass-card p-5">
-                        <p class="text-sm font-medium text-gray-700 mb-3" id="memo-form-title">登记备忘</p>
+                        <p class="text-sm font-medium text-gray-700 mb-3" id="memo-form-title">登记往来</p>
                         <form id="form-memo" class="space-y-3">
                             <input type="hidden" id="memo-edit-id" value="">
                             <div>
@@ -456,15 +456,15 @@
                         </form>
                     </div>
 
-                    <!-- 备忘列表 -->
+                    <!-- 往来列表 -->
                     <div class="glass-card p-5 flex-1">
-                        <p class="text-sm font-medium text-gray-700 mb-3">备忘列表</p>
+                        <p class="text-sm font-medium text-gray-700 mb-3">往来列表</p>
                         <div id="memo-list-loading" class="flex justify-center py-6">
                             <div class="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
                         </div>
                         <div id="memo-list-empty" class="hidden text-center py-8">
                             <p class="text-3xl mb-2">📋</p>
-                            <p class="text-sm text-gray-400">暂无备忘记录</p>
+                            <p class="text-sm text-gray-400">暂无往来记录</p>
                         </div>
                         <div id="memo-list-container" class="space-y-2 max-h-[360px] overflow-y-auto pr-1"></div>
                     </div>
@@ -559,7 +559,7 @@
         let allRows = [];           // 存储全部数据用于搜索
         let searchKeyword = '';     // 当前搜索关键词
 
-        // ---- 备忘相关 ----
+        // ---- 往来相关 ----
         const formMemo      = $('#form-memo');
         const memoEditId    = $('#memo-edit-id');
         const memoBtnSubmit = $('#memo-btn-submit');
@@ -1115,7 +1115,7 @@
         switchToPage(1);
 
         // ============================================================
-        // 备忘模块
+        // 往来模块
         // ============================================================
 
         // 类型选择按钮
@@ -1152,7 +1152,7 @@
             updateMemoStats(memoAllRows);
         }
 
-        /** 更新备忘统计 */
+        /** 更新往来统计 */
         function updateMemoStats(rows) {
             let weikuan = 0, jiekuan = 0, jiechu = 0;
             rows.forEach(r => {
@@ -1166,7 +1166,7 @@
             $('#memo-stat-jiechu').textContent = formatMoney(jiechu);
         }
 
-        /** 渲染备忘列表 */
+        /** 渲染往来列表 */
         function renderMemoList(rows) {
             memoListCont.innerHTML = '';
             if (rows.length === 0) { memoListEmpty.classList.remove('hidden'); return; }
@@ -1224,7 +1224,7 @@
                     memoBtnSubmit.style.background = 'rgba(245,158,11,0.9)';
                     memoBtnSubmit.style.boxShadow = '0 4px 16px rgba(245,158,11,0.2)';
                     memoBtnCancel.classList.remove('hidden');
-                    memoFormTitle.textContent = '修改备忘';
+                    memoFormTitle.textContent = '修改往来';
                     formMemo.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 });
             });
@@ -1232,7 +1232,7 @@
             // 绑定删除
             memoListCont.querySelectorAll('.memo-btn-del').forEach(btn => {
                 btn.addEventListener('click', async () => {
-                    if (!confirm('确定删除这条备忘吗？')) return;
+                    if (!confirm('确定删除这条往来吗？')) return;
                     const { error } = await supabase.from('memos').delete().eq('id', btn.dataset.id);
                     if (!error) { showToast('已删除', '🗑️'); loadMemoData(); }
                     else showToast('删除失败', '❌');
@@ -1240,7 +1240,7 @@
             });
         }
 
-        /** 取消备忘编辑 */
+        /** 取消往来编辑 */
         function cancelMemoEdit() {
             memoEditId.value = '';
             $('#memo-name').value = '';
@@ -1251,7 +1251,7 @@
             memoBtnSubmit.style.background = '';
             memoBtnSubmit.style.boxShadow = '';
             memoBtnCancel.classList.add('hidden');
-            memoFormTitle.textContent = '登记备忘';
+            memoFormTitle.textContent = '登记往来';
             document.querySelectorAll('.memo-type-btn').forEach(b => {
                 if (b.dataset.memoType === '尾款') b.className = 'memo-type-btn flex-1 py-2.5 text-xs font-medium rounded-xl transition-all bg-red-50 text-red-500 border border-red-200 min-h-[40px]';
                 else b.className = 'memo-type-btn flex-1 py-2.5 text-xs font-medium rounded-xl transition-all bg-white/50 text-gray-400 border border-gray-150 min-h-[40px]';
@@ -1260,7 +1260,7 @@
 
         memoBtnCancel.addEventListener('click', cancelMemoEdit);
 
-        /** 备忘表单提交 */
+        /** 往来表单提交 */
         formMemo.addEventListener('submit', async (e) => {
             e.preventDefault();
             const name = $('#memo-name').value.trim();
