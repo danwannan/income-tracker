@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+
+    <!-- ========== iOS PWA 支持 ========== -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="收入账本">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#111827">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><rect width='180' height='180' rx='36' fill='%2310b981'/><text x='90' y='118' font-size='100' text-anchor='middle' fill='white'>💰</text></svg>">
+
+    <!-- ========== TailwindCSS CDN ========== -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        emerald: { 500: '#10b981', 600: '#059669' }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- ========== ECharts CDN ========== -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+
+    <!-- ========== Supabase CDN ========== -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <title>收入账本</title>
+
+    <style>
+        /* ===== 全局微调 ===== */
+        html, body {
+            height: 100%;
+            overscroll-behavior: none;
+            -webkit-font-smoothing: antialiased;
+        }
+        /* iOS safe-area 适配 */
+        .safe-top { padding-top: env(safe-area-inset-top); }
+        .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar { width: 0; height: 0; }
+
+        /* 输入框聚焦光晕 */
+        input:focus {
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.4);
+        }
+
+        /* 数字动画 */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up {
+            animation: fadeInUp 0.3s ease-out;
+        }
+
+        /* Toast 动画 */
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-24px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .toast-enter { animation: slideDown 0.25s ease-out; }
+
+        /* 确保图表容器有明确高度 */
+        .chart-container {
+            min-height: 260px;
+            height: 260px;
+        }
+    </style>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen">
+
+    <!-- ==================== 主容器 ==================== -->
+    <div id="app" class="max-w-md mx-auto min-h-screen flex flex-col safe-top safe-bottom">
+
+        <!-- ========== 头部导航栏 ========== -->
+        <header id="header" class="px-5 py-4 flex items-center justify-between sticky top-0 bg-gray-950/90 backdrop-blur-md z-20 border-b border-gray-800/60">
+            <div class="flex items-center gap-2.5">
+                <span class="text-2xl">💰</span>
+                <h1 class="text-lg font-bold tracking-wide text-white">收入账本</h1>
+            </div>
+            <!-- 用户快捷操作区（登录后显示） -->
+            <div id="header-actions" class="hidden items-center gap-2">
+                <span id="header-email" class="text-xs text-gray-400 max-w-[120px] truncate hidden sm:inline"></span>
+                <button id="btn-logout" class="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors min-h-[36px]">
+                    退出
+                </button>
+            </div>
+        </header>
+
+        <!-- ========== 认证页面（未登录时显示） ========== -->
+        <section id="auth-section" class="flex-1 flex flex-col justify-center px-5 py-8">
+            <div class="bg-gray-900 rounded-2xl p-6 border border-gray-800 shadow-xl">
+
+                <!-- 认证 Tab 切换 -->
+                <div class="flex mb-6 bg-gray-800 rounded-lg p-1">
+                    <button id="tab-login" class="flex-1 py-2.5 text-sm font-medium rounded-md transition-all bg-emerald-500 text-white min-h-[44px]">
+                        登录
+                    </button>
+                    <button id="tab-register" class="flex-1 py-2.5 text-sm font-medium rounded-md transition-all text-gray-400 hover:text-white min-h-[44px]">
+                        注册
+                    </button>
+                </div>
+
+                <!-- 登录表单 -->
+                <form id="form-login" class="space-y-4">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1.5 ml-1">邮箱地址</label>
+                        <input type="email" id="login-email" placeholder="your@email.com"
+                               class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-sm text-white placeholder-gray-500 outline-none transition-all min-h-[44px]">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1.5 ml-1">密码</label>
+                        <input type="password" id="login-password" placeholder="••••••••"
+                               class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-sm text-white placeholder-gray-500 outline-none transition-all min-h-[44px]">
+                    </div>
+                    <button type="submit"
+                            class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-3 rounded-lg transition-colors text-sm min-h-[44px]">
+                        登 录
+                    </button>
+                </form>
+
+                <!-- 注册表单 -->
+                <form id="form-register" class="space-y-4 hidden">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1.5 ml-1">邮箱地址</label>
+                        <input type="email" id="register-email" placeholder="your@email.com"
+                               class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-sm text-white placeholder-gray-500 outline-none transition-all min-h-[44px]">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1.5 ml-1">密码（至少 6 位）</label>
+                        <input type="password" id="register-password" placeholder="••••••••"
+                               class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-sm text-white placeholder-gray-500 outline-none transition-all min-h-[44px]">
+                    </div>
+                    <button type="submit"
+                            class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-3 rounded-lg transition-colors text-sm min-h-[44px]">
+                        注 册
+                    </button>
+                </form>
+
+                <!-- 底部提示 -->
+                <p class="text-xs text-gray-500 text-center mt-5 leading-relaxed">
+                    数据安全存储于 Supabase，仅你自己可见
+                </p>
+            </div>
+        </section>
+
+        <!-- ========== 主功能区（登录后显示） ========== -->
+        <main id="main-section" class="hidden flex-1 flex flex-col px-4 pt-4 pb-6 space-y-5">
+
+            <!-- ---- 统计卡片 ---- -->
+            <div class="bg-gray-900 rounded-2xl p-5 border border-gray-800 shadow-lg">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs text-gray-400 mb-1">本月收入</p>
+                        <p id="stat-monthly-income" class="text-3xl font-bold text-white tracking-tight">¥0.00</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center text-2xl">
+                        💵
+                    </div>
+                </div>
+                <div class="mt-3 flex gap-4 text-xs text-gray-400">
+                    <span>总笔数：<strong id="stat-total-count" class="text-gray-200">0</strong></span>
+                    <span>总收入：<strong id="stat-total-income" class="text-gray-200">¥0.00</strong></span>
+                </div>
+            </div>
+
+            <!-- ---- 图表卡片 ---- -->
+            <div class="bg-gray-900 rounded-2xl p-4 border border-gray-800 shadow-lg">
+                <p class="text-xs text-gray-400 mb-2 ml-1">收入构成</p>
+                <div id="chart-pie" class="chart-container w-full"></div>
+                <p id="chart-empty-hint" class="text-xs text-gray-500 text-center mt-2 hidden">暂无数据，添加一笔收入吧 ✨</p>
+            </div>
+
+            <!-- ---- 录入表单 ---- -->
+            <div class="bg-gray-900 rounded-2xl p-5 border border-gray-800 shadow-lg">
+                <p class="text-sm font-medium text-gray-200 mb-3">记录收入</p>
+                <form id="form-income" class="space-y-3">
+                    <!-- 金额输入：iOS 数字键盘 -->
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1 ml-1">金额 <span class="text-red-400">*</span></label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">¥</span>
+                            <input type="text" inputmode="decimal" id="income-amount" placeholder="0.00"
+                                   class="w-full bg-gray-800 border border-gray-700 rounded-lg pl-9 pr-4 py-3 text-sm text-white placeholder-gray-500 outline-none transition-all min-h-[44px]">
+                        </div>
+                    </div>
+                    <!-- 来源 -->
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1 ml-1">来源</label>
+                        <input type="text" id="income-source" placeholder="如：项目A结款、咨询费"
+                               class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-sm text-white placeholder-gray-500 outline-none transition-all min-h-[44px]">
+                    </div>
+                    <!-- 备注 -->
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1 ml-1">备注</label>
+                        <input type="text" id="income-remark" placeholder="可选备注"
+                               class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-sm text-white placeholder-gray-500 outline-none transition-all min-h-[44px]">
+                    </div>
+                    <button type="submit"
+                            class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-3 rounded-lg transition-colors text-sm min-h-[44px] flex items-center justify-center gap-2">
+                        <span>✓</span> 记一笔
+                    </button>
+                </form>
+            </div>
+
+            <!-- ---- 历史记录列表 ---- -->
+            <div class="bg-gray-900 rounded-2xl p-5 border border-gray-800 shadow-lg flex-1">
+                <p class="text-sm font-medium text-gray-200 mb-3">历史记录</p>
+
+                <!-- 加载中 -->
+                <div id="list-loading" class="flex justify-center py-6">
+                    <div class="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                </div>
+
+                <!-- 空态 -->
+                <div id="list-empty" class="hidden text-center py-8">
+                    <p class="text-3xl mb-2">📝</p>
+                    <p class="text-sm text-gray-400">还没有收入记录</p>
+                </div>
+
+                <!-- 列表容器 -->
+                <div id="list-container" class="space-y-2 max-h-[420px] overflow-y-auto pr-1"></div>
+            </div>
+
+        </main>
+
+        <!-- ========== Toast 通知 ========== -->
+        <div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 hidden">
+            <div class="bg-gray-800 text-white text-sm px-5 py-3 rounded-xl shadow-2xl border border-gray-700 flex items-center gap-2 toast-enter">
+                <span id="toast-icon"></span>
+                <span id="toast-msg"></span>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ==================== 应用脚本 ==================== -->
+    <script>
+    (function () {
+        'use strict';
+
+        // ============================================================
+        // 🔴 重要：请将下面的 URL 和 Key 替换为你自己的 Supabase 项目凭据
+        //    在 Supabase 控制台 → Settings → API 中找到这两个值
+        // ============================================================
+        const SUPABASE_URL = 'https://dcqognzsoixncofgymox.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_oYz6rOGGa5v808d7pwmlxg_rdUfwBVu';
+        // 新用户注册后如需自动确认邮箱，可临时在此填入 service_role key
+        const SUPABASE_SERVICE_KEY = '';
+
+        // ============================================================
+        // 初始化 Supabase 客户端
+        // ============================================================
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // ============================================================
+        // DOM 引用缓存
+        // ============================================================
+        const $ = (sel) => document.querySelector(sel);
+        const $$ = (sel) => document.querySelectorAll(sel);
+
+        // ---- 认证相关 ----
+        const authSection   = $('#auth-section');
+        const mainSection   = $('#main-section');
+        const headerActions = $('#header-actions');
+        const headerEmail   = $('#header-email');
+        const tabLogin      = $('#tab-login');
+        const tabRegister   = $('#tab-register');
+        const formLogin     = $('#form-login');
+        const formRegister  = $('#form-register');
+
+        // ---- 主功能区 ----
+        const statMonthly  = $('#stat-monthly-income');
+        const statTotal    = $('#stat-total-income');
+        const statCount    = $('#stat-total-count');
+        const formIncome   = $('#form-income');
+        const listContainer = $('#list-container');
+        const listLoading  = $('#list-loading');
+        const listEmpty    = $('#list-empty');
+
+        // ---- Toast ----
+        const toast        = $('#toast');
+        const toastIcon    = $('#toast-icon');
+        const toastMsg     = $('#toast-msg');
+        let toastTimer     = null;
+
+        // ---- ECharts 实例 ----
+        let chartInstance  = null;
+        let chartResizeObserver = null;
+
+        // ============================================================
+        // 工具函数
+        // ============================================================
+
+        /** 格式化金额为 ¥ 显示 */
+        function formatMoney(amount) {
+            const num = parseFloat(amount);
+            if (isNaN(num)) return '¥0.00';
+            return '¥' + num.toLocaleString('zh-CN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        /** 获取当年当月字符串，如 "2026-06" */
+        function getCurrentYearMonth() {
+            const d = new Date();
+            return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+        }
+
+        /** 显示 Toast 通知 */
+        function showToast(message, icon = '✓', duration = 2200) {
+            if (toastTimer) clearTimeout(toastTimer);
+            toastIcon.textContent = icon;
+            toastMsg.textContent = message;
+            toast.classList.remove('hidden');
+            // 强制重绘以重新触发动画
+            void toast.offsetWidth;
+            toast.firstElementChild.classList.remove('toast-enter');
+            void toast.firstElementChild.offsetWidth;
+            toast.firstElementChild.classList.add('toast-enter');
+            toastTimer = setTimeout(() => {
+                toast.classList.add('hidden');
+                toastTimer = null;
+            }, duration);
+        }
+
+        // ============================================================
+        // 认证模块
+        // ============================================================
+
+        /** Tab 切换：登录 / 注册 */
+        function switchAuthTab(tab) {
+            if (tab === 'login') {
+                tabLogin.classList.add('bg-emerald-500', 'text-white');
+                tabLogin.classList.remove('text-gray-400');
+                tabRegister.classList.remove('bg-emerald-500', 'text-white');
+                tabRegister.classList.add('text-gray-400');
+                formLogin.classList.remove('hidden');
+                formRegister.classList.add('hidden');
+            } else {
+                tabRegister.classList.add('bg-emerald-500', 'text-white');
+                tabRegister.classList.remove('text-gray-400');
+                tabLogin.classList.remove('bg-emerald-500', 'text-white');
+                tabLogin.classList.add('text-gray-400');
+                formRegister.classList.remove('hidden');
+                formLogin.classList.add('hidden');
+            }
+        }
+
+        tabLogin.addEventListener('click',    () => switchAuthTab('login'));
+        tabRegister.addEventListener('click', () => switchAuthTab('register'));
+
+        /** 登录提交 */
+        formLogin.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email    = $('#login-email').value.trim();
+            const password = $('#login-password').value;
+
+            if (!email || !password) {
+                showToast('请填写邮箱和密码', '⚠️');
+                return;
+            }
+
+            const btn = formLogin.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            btn.textContent = '登录中...';
+
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+            btn.disabled = false;
+            btn.textContent = '登 录';
+
+            if (error) {
+                // 根据错误类型给出中文提示
+                if (error.message.includes('Invalid login credentials')) {
+                    showToast('邮箱或密码错误，请重试', '❌');
+                } else if (error.message.includes('Email not confirmed')) {
+                    showToast('邮箱未验证，请查收邮件或重新注册', '❌');
+                } else {
+                    showToast('登录失败：' + error.message, '❌');
+                }
+                console.error('登录错误：', error);
+                return;
+            }
+            showToast('登录成功', '✅');
+            // 登录成功后 UI 会由 onAuthStateChange 自动切换
+        });
+
+        /** 注册提交：注册后自动确认邮箱并登录 */
+        formRegister.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email    = $('#register-email').value.trim();
+            const password = $('#register-password').value;
+
+            if (!email || !password) {
+                showToast('请填写邮箱和密码', '⚠️');
+                return;
+            }
+            if (password.length < 6) {
+                showToast('密码至少 6 位', '⚠️');
+                return;
+            }
+
+            const btn = formRegister.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            btn.textContent = '注册中...';
+
+            // 第一步：注册用户
+            const { data, error } = await supabase.auth.signUp({ email, password });
+
+            if (error) {
+                btn.disabled = false;
+                btn.textContent = '注 册';
+                showToast(error.message || '注册失败', '❌');
+                return;
+            }
+
+            // 如果该邮箱已注册
+            if (data?.user?.identities?.length === 0) {
+                btn.disabled = false;
+                btn.textContent = '注 册';
+                showToast('该邮箱已注册，请直接登录', '📧');
+                return;
+            }
+
+            // 第二步：使用 Admin API 自动确认邮箱（跳过验证邮件）
+            btn.textContent = '确认中...';
+            try {
+                await fetch(
+                    SUPABASE_URL + '/auth/v1/admin/users/' + data.user.id,
+                    {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': 'Bearer ' + SUPABASE_SERVICE_KEY,
+                            'apikey': SUPABASE_SERVICE_KEY,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ email_confirm: true })
+                    }
+                );
+            } catch (_) {
+                // 如果 Admin API 调用失败，不影响后续流程（可能已经确认过了）
+            }
+
+            // 第三步：自动登录
+            btn.textContent = '登录中...';
+            const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
+
+            btn.disabled = false;
+            btn.textContent = '注 册';
+
+            if (loginError) {
+                showToast('注册成功，但自动登录失败，请手动登录', '⚠️');
+            } else {
+                showToast('注册成功，已自动登录！', '✅');
+            }
+        });
+
+        /** 退出登录 */
+        $('#btn-logout').addEventListener('click', async () => {
+            await supabase.auth.signOut();
+            showToast('已退出登录', '👋');
+        });
+
+        // ============================================================
+        // 认证状态监听（核心：驱动 UI 切换）
+        // ============================================================
+        supabase.auth.onAuthStateChange((event, session) => {
+            if (session?.user) {
+                // 已登录：显示主界面
+                authSection.classList.add('hidden');
+                mainSection.classList.remove('hidden');
+                headerActions.classList.remove('hidden');
+                headerEmail.textContent = session.user.email;
+                // 加载数据
+                loadAllData();
+            } else {
+                // 未登录：显示认证界面
+                authSection.classList.remove('hidden');
+                mainSection.classList.add('hidden');
+                headerActions.classList.add('hidden');
+                headerEmail.textContent = '';
+            }
+        });
+
+        // ============================================================
+        // 数据加载与渲染
+        // ============================================================
+
+        /** 加载全部数据：统计 + 图表 + 列表 */
+        async function loadAllData() {
+            await Promise.all([fetchStatsAndList(), fetchChartData()]);
+        }
+
+        /** 获取统计数据和列表（共用一次查询） */
+        async function fetchStatsAndList() {
+            listLoading.classList.remove('hidden');
+            listContainer.innerHTML = '';
+
+            // 查询当前用户全部收入，按时间倒序
+            const { data: rows, error } = await supabase
+                .from('incomes')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            listLoading.classList.add('hidden');
+
+            if (error) {
+                showToast('数据加载失败：' + error.message, '❌');
+                console.error('Supabase 查询错误：', error);
+                return;
+            }
+
+            // ---- 计算统计数据 ----
+            const now = new Date();
+            const currentYearMonth = getCurrentYearMonth();
+            let monthlySum = 0;
+            let totalSum = 0;
+
+            (rows || []).forEach(row => {
+                const amount = parseFloat(row.amount) || 0;
+                totalSum += amount;
+                // 判断是否属于本月
+                const rowMonth = row.created_at
+                    ? row.created_at.substring(0, 7)  // "2026-06-15T..." → "2026-06"
+                    : '';
+                if (rowMonth === currentYearMonth) {
+                    monthlySum += amount;
+                }
+            });
+
+            statMonthly.textContent = formatMoney(monthlySum);
+            statTotal.textContent   = formatMoney(totalSum);
+            statCount.textContent   = (rows || []).length;
+
+            // ---- 渲染列表 ----
+            renderList(rows || []);
+        }
+
+        /** 渲染历史记录列表 */
+        function renderList(rows) {
+            listContainer.innerHTML = '';
+
+            if (rows.length === 0) {
+                listEmpty.classList.remove('hidden');
+                return;
+            }
+            listEmpty.classList.add('hidden');
+
+            rows.forEach((row, index) => {
+                const card = document.createElement('div');
+                card.className = 'bg-gray-800/50 rounded-xl px-4 py-3 border border-gray-700/50 animate-fade-in-up';
+                card.style.animationDelay = (index * 40) + 'ms';
+
+                const amount = parseFloat(row.amount) || 0;
+                const timeStr = row.created_at
+                    ? new Date(row.created_at).toLocaleDateString('zh-CN', {
+                        month: 'numeric',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    })
+                    : '未知时间';
+
+                card.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm text-white font-medium truncate">
+                                ${escapeHtml(row.source || '未命名来源')}
+                            </p>
+                            ${row.remark ? `<p class="text-xs text-gray-500 mt-0.5 truncate">${escapeHtml(row.remark)}</p>` : ''}
+                        </div>
+                        <div class="text-right ml-3 flex-shrink-0">
+                            <p class="text-base font-semibold text-emerald-400">${formatMoney(amount)}</p>
+                            <p class="text-[10px] text-gray-500 mt-0.5">${timeStr}</p>
+                        </div>
+                    </div>
+                `;
+                listContainer.appendChild(card);
+            });
+        }
+
+        /** 简单 XSS 防护 */
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        /** 获取图表数据 */
+        async function fetchChartData() {
+            const { data: rows, error } = await supabase
+                .from('incomes')
+                .select('amount, source');
+
+            if (error) {
+                console.error('图表数据查询失败：', error);
+                return;
+            }
+
+            // 按 source 汇总
+            const sourceMap = {};
+            (rows || []).forEach(row => {
+                const key = row.source || '未分类';
+                sourceMap[key] = (sourceMap[key] || 0) + (parseFloat(row.amount) || 0);
+            });
+
+            const entries = Object.entries(sourceMap);
+            // 按金额降序排列
+            entries.sort((a, b) => b[1] - a[1]);
+
+            const names = entries.map(e => e[0]);
+            const values = entries.map(e => e[1]);
+
+            renderChart(names, values);
+        }
+
+        /** 渲染 ECharts 环形图 */
+        function renderChart(names, values) {
+            const chartDom = $('#chart-pie');
+            const emptyHint = $('#chart-empty-hint');
+
+            if (names.length === 0 || values.reduce((a, b) => a + b, 0) === 0) {
+                // 无数据状态
+                chartDom.style.display = 'none';
+                emptyHint.classList.remove('hidden');
+                if (chartInstance) chartInstance.dispose();
+                chartInstance = null;
+                return;
+            }
+
+            chartDom.style.display = '';
+            emptyHint.classList.add('hidden');
+
+            // 销毁旧实例再创建（避免 resize 冲突）
+            if (chartInstance) {
+                chartInstance.dispose();
+                chartInstance = null;
+            }
+
+            chartInstance = echarts.init(chartDom, null, {
+                // 移动端高 DPI 渲染
+                devicePixelRatio: window.devicePixelRatio || 1
+            });
+
+            // 色彩方案：深色主题下的柔和配色
+            const colorPalette = [
+                '#10b981', '#34d399', '#6ee7b7', '#a7f3d0',
+                '#fbbf24', '#f59e0b', '#f472b6', '#818cf8',
+                '#38bdf8', '#a78bfa'
+            ];
+
+            const option = {
+                color: colorPalette,
+                tooltip: {
+                    trigger: 'item',
+                    backgroundColor: '#1f2937',
+                    borderColor: '#374151',
+                    textStyle: { color: '#e5e7eb', fontSize: 12 },
+                    formatter: function (p) {
+                        return `${p.name}<br/><strong>${formatMoney(p.value)}</strong> (${p.percent}%)`;
+                    }
+                },
+                legend: {
+                    bottom: 0,
+                    left: 'center',
+                    textStyle: { color: '#9ca3af', fontSize: 11 },
+                    itemWidth: 8,
+                    itemHeight: 8,
+                    itemGap: 12
+                },
+                series: [{
+                    name: '收入构成',
+                    type: 'pie',
+                    radius: ['52%', '78%'],       // 环形图
+                    center: ['50%', '43%'],
+                    avoidLabelOverlap: false,
+                    itemStyle: {
+                        borderRadius: 4,
+                        borderColor: '#111827',
+                        borderWidth: 3
+                    },
+                    label: {
+                        show: false               // 移动端简洁：不显示标签线
+                    },
+                    emphasis: {
+                        label: {
+                            show: true,
+                            fontSize: 14,
+                            fontWeight: 'bold',
+                            color: '#f9fafb'
+                        },
+                        scaleSize: 8
+                    },
+                    data: names.map((name, i) => ({
+                        name: name,
+                        value: values[i]
+                    }))
+                }]
+            };
+
+            chartInstance.setOption(option);
+
+            // 监听容器尺寸变化（响应式）
+            if (chartResizeObserver) chartResizeObserver.disconnect();
+            chartResizeObserver = new ResizeObserver(() => {
+                if (chartInstance) chartInstance.resize();
+            });
+            chartResizeObserver.observe(chartDom);
+        }
+
+        // ============================================================
+        // 收入录入表单
+        // ============================================================
+        formIncome.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const amountStr = $('#income-amount').value.trim();
+            const source    = $('#income-source').value.trim();
+            const remark    = $('#income-remark').value.trim();
+
+            // 金额校验
+            if (!amountStr) {
+                showToast('请输入金额', '⚠️');
+                $('#income-amount').focus();
+                return;
+            }
+            const amount = parseFloat(amountStr);
+            if (isNaN(amount) || amount <= 0) {
+                showToast('请输入有效的正数金额', '⚠️');
+                $('#income-amount').focus();
+                return;
+            }
+
+            // 获取当前登录用户
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                showToast('请先登录', '⚠️');
+                return;
+            }
+
+            const btn = formIncome.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> 保存中...';
+
+            // 插入数据（user_id 由数据库默认值或 RLS 确保安全）
+            const { error } = await supabase
+                .from('incomes')
+                .insert({
+                    user_id: user.id,          // 显式传入 user_id
+                    amount: amount,
+                    source: source || '未命名收入',
+                    remark: remark || null
+                });
+
+            btn.disabled = false;
+            btn.innerHTML = '<span>✓</span> 记一笔';
+
+            if (error) {
+                showToast('保存失败：' + error.message, '❌');
+                console.error('插入错误：', error);
+                return;
+            }
+
+            // 清空表单
+            $('#income-amount').value = '';
+            $('#income-source').value = '';
+            $('#income-remark').value = '';
+
+            showToast('记录成功！', '✅');
+
+            // 重新加载所有数据（统计 + 列表 + 图表）
+            await loadAllData();
+        });
+
+        // ============================================================
+        // 金额输入增强：限制格式（仅允许数字和一个小数点）
+        // ============================================================
+        $('#income-amount').addEventListener('input', function () {
+            // 移除非法字符，只保留数字和一个小数点
+            let val = this.value.replace(/[^\d.]/g, '');
+            // 确保只有一个小数点
+            const parts = val.split('.');
+            if (parts.length > 2) {
+                val = parts[0] + '.' + parts.slice(1).join('');
+            }
+            // 限制小数点后两位
+            if (parts.length === 2 && parts[1].length > 2) {
+                val = parts[0] + '.' + parts[1].substring(0, 2);
+            }
+            this.value = val;
+        });
+
+        // ============================================================
+        // 页面销毁时清理 ECharts
+        // ============================================================
+        window.addEventListener('beforeunload', () => {
+            if (chartInstance) chartInstance.dispose();
+            if (chartResizeObserver) chartResizeObserver.disconnect();
+        });
+
+        // ============================================================
+        // 启动：检查是否已有登录会话
+        // ============================================================
+        (async function init() {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) {
+                // 已有会话，直接显示主界面（onAuthStateChange 也会触发，但这里快速响应）
+                authSection.classList.add('hidden');
+                mainSection.classList.remove('hidden');
+                headerActions.classList.remove('hidden');
+                headerEmail.textContent = session.user.email;
+                loadAllData();
+            }
+        })();
+
+    })();
+    </script>
+
+</body>
+</html>
