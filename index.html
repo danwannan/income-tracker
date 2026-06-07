@@ -61,6 +61,10 @@
         .toast-enter { animation: slideDown 0.25s ease-out; }
 
         .chart-container { min-height: 340px; height: 340px; }
+
+        /* 滑动容器隐藏滚动条 */
+        #swipe-container::-webkit-scrollbar { display: none; }
+        #swipe-container { scrollbar-width: none; -ms-overflow-style: none; }
     </style>
 </head>
 <body class="bg-white text-gray-900 min-h-screen">
@@ -122,87 +126,111 @@
         </section>
 
         <!-- ========== 主功能区 ========== -->
-        <main id="main-section" class="hidden flex-1 flex flex-col px-4 pt-4 pb-6 space-y-4">
+        <main id="main-section" class="hidden flex-1 flex flex-col">
 
-            <!-- 年收入统计卡片 -->
-            <div class="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-xs text-gray-400 mb-1">年收入</p>
-                        <p id="stat-yearly-income" class="text-3xl font-bold text-gray-900 tracking-tight">¥0.00</p>
+            <!-- 页面切换 Tab -->
+            <div class="flex items-center justify-center gap-6 py-3 px-4">
+                <button id="tab-page1" class="text-sm font-medium min-h-[36px] px-1 transition-colors text-emerald-500 border-b-2 border-emerald-500">记 录</button>
+                <button id="tab-page2" class="text-sm font-medium min-h-[36px] px-1 transition-colors text-gray-300 border-b-2 border-transparent">统 计</button>
+            </div>
+
+            <!-- 滑动页面容器 -->
+            <div id="swipe-container" class="flex-1 overflow-x-auto snap-x snap-mandatory scroll-smooth flex" style="scrollbar-width: none; -ms-overflow-style: none;">
+
+                <!-- ===== 第一页：收入录入 + 历史列表 ===== -->
+                <div id="page-record" class="snap-start flex-shrink-0 w-full flex flex-col px-4 pb-6 space-y-4 overflow-y-auto" style="scrollbar-width: none;">
+
+                    <!-- 录入表单 -->
+                    <div class="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm">
+                        <p class="text-sm font-medium text-gray-700 mb-3" id="form-title">记录收入</p>
+                        <form id="form-income" class="space-y-3">
+                            <input type="hidden" id="edit-id" value="">
+                            <div>
+                                <label class="block text-xs text-gray-400 mb-1 ml-1">金额 <span class="text-red-400">*</span></label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">¥</span>
+                                    <input type="text" inputmode="decimal" id="income-amount" placeholder="0.00"
+                                           class="w-full bg-gray-50 border border-gray-200 rounded-lg pl-9 pr-4 py-3 text-sm text-gray-900 placeholder-gray-400 outline-none transition-all min-h-[44px]">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-400 mb-1 ml-1">来源</label>
+                                <input type="text" id="income-source" placeholder="如：项目A结款、咨询费"
+                                       class="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-900 placeholder-gray-400 outline-none transition-all min-h-[44px]">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-400 mb-1 ml-1">备注</label>
+                                <input type="text" id="income-remark" placeholder="可选备注"
+                                       class="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-900 placeholder-gray-400 outline-none transition-all min-h-[44px]">
+                            </div>
+                            <div class="flex gap-2">
+                                <button type="submit" id="btn-submit"
+                                        class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-3 rounded-lg transition-colors text-sm min-h-[44px] flex items-center justify-center gap-1.5">
+                                    <span>✓</span> 记一笔
+                                </button>
+                                <button type="button" id="btn-cancel-edit"
+                                        class="hidden px-4 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm transition-colors min-h-[44px]">
+                                    取消
+                                </button>
+                            </div>
+                        </form>
                     </div>
-                    <div class="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-2xl">💵</div>
-                </div>
-                <div class="mt-3 flex gap-4 text-xs text-gray-400">
-                    <span>总笔数：<strong id="stat-total-count" class="text-gray-700">0</strong></span>
-                    <span>总收入：<strong id="stat-total-income" class="text-gray-700">¥0.00</strong></span>
-                </div>
-            </div>
 
-            <!-- 图表卡片 -->
-            <div class="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm">
-                <p class="text-xs text-gray-400 mb-2 ml-1">收入构成</p>
-                <div id="chart-pie" class="chart-container w-full"></div>
-                <p id="chart-empty-hint" class="text-xs text-gray-400 text-center mt-2 hidden">暂无数据，添加一笔收入吧 ✨</p>
-            </div>
+                    <!-- 历史记录列表 -->
+                    <div class="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm flex-1">
+                        <div class="flex items-center justify-between mb-3">
+                            <p class="text-sm font-medium text-gray-700">历史记录</p>
+                            <span id="list-filter-count" class="text-[10px] text-gray-400 hidden"></span>
+                        </div>
+                        <!-- 搜索栏 -->
+                        <div class="relative mb-3">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-sm">🔍</span>
+                            <input type="text" id="search-input" placeholder="搜索来源或备注..."
+                                   class="w-full bg-gray-50 border border-gray-200 rounded-lg pl-9 pr-8 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none transition-all min-h-[40px] focus:border-emerald-300">
+                            <button id="btn-clear-search" class="hidden absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full text-gray-300 hover:text-gray-500 hover:bg-gray-200 transition-colors text-xs">✕</button>
+                        </div>
+                        <div id="list-loading" class="flex justify-center py-6">
+                            <div class="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                        </div>
+                        <div id="list-empty" class="hidden text-center py-8">
+                            <p class="text-3xl mb-2">📝</p>
+                            <p class="text-sm text-gray-400">还没有收入记录</p>
+                        </div>
+                        <div id="list-container" class="space-y-2 max-h-[420px] overflow-y-auto pr-1"></div>
+                    </div>
+                </div>
 
-            <!-- 录入表单 -->
-            <div class="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm">
-                <p class="text-sm font-medium text-gray-700 mb-3" id="form-title">记录收入</p>
-                <form id="form-income" class="space-y-3">
-                    <input type="hidden" id="edit-id" value="">
-                    <div>
-                        <label class="block text-xs text-gray-400 mb-1 ml-1">金额 <span class="text-red-400">*</span></label>
-                        <div class="relative">
-                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">¥</span>
-                            <input type="text" inputmode="decimal" id="income-amount" placeholder="0.00"
-                                   class="w-full bg-gray-50 border border-gray-200 rounded-lg pl-9 pr-4 py-3 text-sm text-gray-900 placeholder-gray-400 outline-none transition-all min-h-[44px]">
+                <!-- ===== 第二页：统计 + 图表 ===== -->
+                <div id="page-stats" class="snap-start flex-shrink-0 w-full flex flex-col px-4 pb-6 space-y-4 overflow-y-auto" style="scrollbar-width: none;">
+
+                    <!-- 年收入统计卡片 -->
+                    <div class="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs text-gray-400 mb-1">年收入</p>
+                                <p id="stat-yearly-income" class="text-3xl font-bold text-gray-900 tracking-tight">¥0.00</p>
+                            </div>
+                            <div class="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-2xl">💵</div>
+                        </div>
+                        <div class="mt-3 flex gap-4 text-xs text-gray-400">
+                            <span>总笔数：<strong id="stat-total-count" class="text-gray-700">0</strong></span>
+                            <span>总收入：<strong id="stat-total-income" class="text-gray-700">¥0.00</strong></span>
                         </div>
                     </div>
-                    <div>
-                        <label class="block text-xs text-gray-400 mb-1 ml-1">来源</label>
-                        <input type="text" id="income-source" placeholder="如：项目A结款、咨询费"
-                               class="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-900 placeholder-gray-400 outline-none transition-all min-h-[44px]">
+
+                    <!-- 图表卡片 -->
+                    <div class="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm flex-1">
+                        <p class="text-xs text-gray-400 mb-2 ml-1">收入构成</p>
+                        <div id="chart-pie" class="chart-container w-full"></div>
+                        <p id="chart-empty-hint" class="text-xs text-gray-400 text-center mt-2 hidden">暂无数据，添加一笔收入吧 ✨</p>
                     </div>
-                    <div>
-                        <label class="block text-xs text-gray-400 mb-1 ml-1">备注</label>
-                        <input type="text" id="income-remark" placeholder="可选备注"
-                               class="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-900 placeholder-gray-400 outline-none transition-all min-h-[44px]">
-                    </div>
-                    <div class="flex gap-2">
-                        <button type="submit" id="btn-submit"
-                                class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-3 rounded-lg transition-colors text-sm min-h-[44px] flex items-center justify-center gap-1.5">
-                            <span>✓</span> 记一笔
-                        </button>
-                        <button type="button" id="btn-cancel-edit"
-                                class="hidden px-4 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm transition-colors min-h-[44px]">
-                            取消
-                        </button>
-                    </div>
-                </form>
+                </div>
             </div>
 
-            <!-- 历史记录列表 -->
-            <div class="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm flex-1">
-                <div class="flex items-center justify-between mb-3">
-                    <p class="text-sm font-medium text-gray-700">历史记录</p>
-                    <span id="list-filter-count" class="text-[10px] text-gray-400 hidden"></span>
-                </div>
-                <!-- 搜索栏 -->
-                <div class="relative mb-3">
-                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-sm">🔍</span>
-                    <input type="text" id="search-input" placeholder="搜索来源或备注..."
-                           class="w-full bg-gray-50 border border-gray-200 rounded-lg pl-9 pr-8 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none transition-all min-h-[40px] focus:border-emerald-300">
-                    <button id="btn-clear-search" class="hidden absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full text-gray-300 hover:text-gray-500 hover:bg-gray-200 transition-colors text-xs">✕</button>
-                </div>
-                <div id="list-loading" class="flex justify-center py-6">
-                    <div class="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-                </div>
-                <div id="list-empty" class="hidden text-center py-8">
-                    <p class="text-3xl mb-2">📝</p>
-                    <p class="text-sm text-gray-400">还没有收入记录</p>
-                </div>
-                <div id="list-container" class="space-y-2 max-h-[420px] overflow-y-auto pr-1"></div>
+            <!-- 页面指示器 -->
+            <div class="flex items-center justify-center gap-2 py-2 pb-4">
+                <span id="dot1" class="w-1.5 h-1.5 rounded-full bg-emerald-500 transition-all"></span>
+                <span id="dot2" class="w-1.5 h-1.5 rounded-full bg-gray-200 transition-all"></span>
             </div>
 
         </main>
@@ -779,6 +807,54 @@
             applySearchFilter();
             input.focus();
         });
+
+        // ============================================================
+        // 页面滑动切换
+        // ============================================================
+        const swipeContainer = $('#swipe-container');
+        const tabPage1 = $('#tab-page1');
+        const tabPage2 = $('#tab-page2');
+        const dot1 = $('#dot1');
+        const dot2 = $('#dot2');
+
+        function switchToPage(page) {
+            if (page === 1) {
+                swipeContainer.scrollTo({ left: 0, behavior: 'smooth' });
+                tabPage1.className = 'text-sm font-medium min-h-[36px] px-1 transition-colors text-emerald-500 border-b-2 border-emerald-500';
+                tabPage2.className = 'text-sm font-medium min-h-[36px] px-1 transition-colors text-gray-300 border-b-2 border-transparent';
+                dot1.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500 transition-all';
+                dot2.className = 'w-1.5 h-1.5 rounded-full bg-gray-200 transition-all';
+            } else {
+                swipeContainer.scrollTo({ left: swipeContainer.offsetWidth, behavior: 'smooth' });
+                tabPage2.className = 'text-sm font-medium min-h-[36px] px-1 transition-colors text-emerald-500 border-b-2 border-emerald-500';
+                tabPage1.className = 'text-sm font-medium min-h-[36px] px-1 transition-colors text-gray-300 border-b-2 border-transparent';
+                dot2.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500 transition-all';
+                dot1.className = 'w-1.5 h-1.5 rounded-full bg-gray-200 transition-all';
+            }
+        }
+
+        tabPage1.addEventListener('click', () => switchToPage(1));
+        tabPage2.addEventListener('click', () => switchToPage(2));
+
+        // 监听滑动，同步 Tab 状态
+        swipeContainer.addEventListener('scroll', () => {
+            const scrollLeft = swipeContainer.scrollLeft;
+            const pageWidth = swipeContainer.offsetWidth;
+            if (scrollLeft < pageWidth / 2) {
+                tabPage1.className = 'text-sm font-medium min-h-[36px] px-1 transition-colors text-emerald-500 border-b-2 border-emerald-500';
+                tabPage2.className = 'text-sm font-medium min-h-[36px] px-1 transition-colors text-gray-300 border-b-2 border-transparent';
+                dot1.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500 transition-all';
+                dot2.className = 'w-1.5 h-1.5 rounded-full bg-gray-200 transition-all';
+            } else {
+                tabPage2.className = 'text-sm font-medium min-h-[36px] px-1 transition-colors text-emerald-500 border-b-2 border-emerald-500';
+                tabPage1.className = 'text-sm font-medium min-h-[36px] px-1 transition-colors text-gray-300 border-b-2 border-transparent';
+                dot2.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500 transition-all';
+                dot1.className = 'w-1.5 h-1.5 rounded-full bg-gray-200 transition-all';
+            }
+        }, { passive: true });
+
+        // 初始化：确保在第一页
+        switchToPage(1);
 
         // ============================================================
         // 清理
