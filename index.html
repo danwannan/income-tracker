@@ -221,7 +221,7 @@
             50% { opacity: 1; }
         }
 
-        .chart-container { min-height: 340px; height: 340px; }
+        .chart-container { min-height: 380px; height: 380px; }
 
         #swipe-container::-webkit-scrollbar { display: none; }
         #swipe-container { scrollbar-width: none; -ms-overflow-style: none; }
@@ -815,7 +815,7 @@
                     text: formatMoney(total),
                     subtext: '总收入',
                     left: 'center',
-                    top: '42%',
+                    top: '40%',
                     textStyle: { fontSize: 18, fontWeight: 'bold', color: '#1f2937' },
                     subtextStyle: { fontSize: 11, color: '#9ca3af' }
                 },
@@ -843,9 +843,9 @@
                 series: [{
                     name: '收入构成',
                     type: 'pie',
-                    radius: ['55%', '82%'],
-                    center: ['50%', '48%'],
-                    avoidLabelOverlap: false,
+                    radius: ['50%', '70%'],
+                    center: ['50%', '46%'],
+                    avoidLabelOverlap: true,
                     itemStyle: {
                         borderRadius: 6,
                         borderColor: '#fff',
@@ -854,14 +854,15 @@
                     label: {
                         show: true,
                         position: 'outside',
-                        formatter: '{b}\n{d}%',
+                        formatter: '{b} {d}%',
                         fontSize: 10,
                         color: '#6b7280',
-                        lineHeight: 15
+                        overflow: 'truncate',
+                        width: 60
                     },
                     labelLine: {
-                        length: 16,
-                        length2: 12,
+                        length: 20,
+                        length2: 16,
                         lineStyle: { color: '#d1d5db' }
                     },
                     emphasis: {
