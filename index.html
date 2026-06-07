@@ -227,19 +227,22 @@
         #swipe-container {
             scrollbar-width: none;
             -ms-overflow-style: none;
-            scroll-snap-type: x mandatory;
-            scroll-behavior: smooth;
-            overflow-x: scroll;
+            overflow-x: auto;
             overflow-y: hidden;
+            display: flex;
+            flex-wrap: nowrap;
+            scroll-snap-type: x mandatory;
         }
         #swipe-container > div {
+            flex: 0 0 100%;
+            width: 100%;
             scroll-snap-align: start;
-            scroll-snap-stop: always;
         }
         /* 允许页面内部垂直滚动 */
         #page-record, #page-stats, #page-memo {
             touch-action: pan-y;
             overscroll-behavior-y: contain;
+            overflow-y: auto;
         }
     </style>
 </head>
@@ -1099,36 +1102,43 @@
         const ACTIVE_DOT = 'w-1.5 h-1.5 rounded-full bg-emerald-500 transition-all';
         const INACTIVE_DOT = 'w-1.5 h-1.5 rounded-full bg-gray-300 transition-all';
 
+        let currentPage = 1;
+        let isScrolling = false;
+
         function switchToPage(page) {
-            const target = swipeContainer.children[page - 1];
-            if (target) target.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+            currentPage = page;
+            const targetLeft = (page - 1) * swipeContainer.clientWidth;
+            isScrolling = true;
+            swipeContainer.scrollTo({ left: targetLeft, behavior: 'smooth' });
             updateTabState(page - 1);
             if (page === 3) loadMemoData();
+            // 动画结束后重置标记
+            setTimeout(() => { isScrolling = false; }, 400);
         }
 
         tabPage1.addEventListener('click', () => switchToPage(1));
         tabPage2.addEventListener('click', () => switchToPage(2));
         tabPage3.addEventListener('click', () => switchToPage(3));
 
-        // 用 scrollend 事件精准检测页面切换
-        swipeContainer.addEventListener('scrollend', () => {
-            const pw = swipeContainer.offsetWidth;
-            const idx = Math.round(swipeContainer.scrollLeft / pw);
-            updateTabState(idx);
-            if (idx === 2) loadMemoData();
-        });
-
-        // 兼容不支持 scrollend 的浏览器，用 debounce
-        let scrollDebounce;
+        // 监听手动滑动结束
+        swipeContainer.addEventListener('scrollend', onScrollEnd);
         swipeContainer.addEventListener('scroll', () => {
-            clearTimeout(scrollDebounce);
-            scrollDebounce = setTimeout(() => {
-                const pw = swipeContainer.offsetWidth;
-                const idx = Math.round(swipeContainer.scrollLeft / pw);
+            if (!isScrolling) {
+                // 手动滑动时用防抖检测
+                clearTimeout(swipeContainer._debounce);
+                swipeContainer._debounce = setTimeout(onScrollEnd, 100);
+            }
+        }, { passive: true });
+
+        function onScrollEnd() {
+            const pw = swipeContainer.clientWidth;
+            const idx = Math.round(swipeContainer.scrollLeft / pw);
+            if (idx !== currentPage - 1) {
+                currentPage = idx + 1;
                 updateTabState(idx);
                 if (idx === 2) loadMemoData();
-            }, 150);
-        }, { passive: true });
+            }
+        }
 
         function updateTabState(idx) {
             [tabPage1, tabPage2, tabPage3].forEach((t, i) => {
