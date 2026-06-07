@@ -221,7 +221,7 @@
             50% { opacity: 1; }
         }
 
-        .chart-container { min-height: 320px; height: 320px; }
+        .chart-container { min-height: 360px; height: 360px; }
 
         /* ===== 滑动页面容器 ===== */
         #swipe-container {
@@ -231,6 +231,7 @@
             display: flex;
             flex-wrap: nowrap;
             width: 100%;
+            -webkit-overflow-scrolling: touch;
         }
         #swipe-container::-webkit-scrollbar { display: none; }
         #swipe-container { scrollbar-width: none; -ms-overflow-style: none; }
@@ -238,6 +239,7 @@
             flex: 0 0 100%;
             width: 100%;
             scroll-snap-align: start;
+            scroll-snap-stop: always;
             overflow-y: auto;
         }
     </style>
@@ -927,7 +929,7 @@
                     text: formatMoney(total),
                     subtext: '总收入',
                     left: 'center',
-                    top: '42%',
+                    top: '38%',
                     textStyle: { fontSize: 18, fontWeight: 'bold', color: '#1f2937' },
                     subtextStyle: { fontSize: 11, color: '#9ca3af' }
                 },
@@ -961,8 +963,8 @@
                 series: [{
                     name: '收入构成',
                     type: 'pie',
-                    radius: ['50%', '72%'],
-                    center: ['50%', '45%'],
+                    radius: ['45%', '65%'],
+                    center: ['50%', '43%'],
                     avoidLabelOverlap: true,
                     itemStyle: {
                         borderRadius: 6,
@@ -970,7 +972,18 @@
                         borderWidth: 3
                     },
                     label: {
-                        show: false
+                        show: true,
+                        position: 'outside',
+                        formatter: '{b}\n{d}%',
+                        fontSize: 10,
+                        color: '#6b7280',
+                        lineHeight: 14,
+                        distanceToLabelLine: 4
+                    },
+                    labelLine: {
+                        length: 18,
+                        length2: 14,
+                        lineStyle: { color: '#d1d5db' }
                     },
                     emphasis: {
                         label: { show: true, fontSize: 13, fontWeight: 'bold', color: '#1f2937' },
@@ -1095,7 +1108,10 @@
         const INACTIVE_DOT = 'w-1.5 h-1.5 rounded-full bg-gray-300 transition-all';
 
         function goPage(n) {
-            swipeContainer.scrollTo({ left: (n - 1) * swipeContainer.clientWidth, behavior: 'smooth' });
+            const targetLeft = (n - 1) * swipeContainer.clientWidth;
+            swipeContainer.scrollTo({ left: targetLeft, behavior: 'smooth' });
+            updateTabState(n - 1);
+            if (n === 3) loadMemoData();
         }
 
         function updateTabState(idx) {
@@ -1109,15 +1125,19 @@
 
         tabPage1.addEventListener('click', () => goPage(1));
         tabPage2.addEventListener('click', () => goPage(2));
-        tabPage3.addEventListener('click', () => { goPage(3); loadMemoData(); });
+        tabPage3.addEventListener('click', () => goPage(3));
 
+        let scrollTimer;
         swipeContainer.addEventListener('scroll', () => {
-            const pw = swipeContainer.clientWidth;
-            if (pw === 0) return;
-            const idx = Math.round(swipeContainer.scrollLeft / pw);
-            updateTabState(idx);
-            if (idx === 2) loadMemoData();
-        });
+            clearTimeout(scrollTimer);
+            scrollTimer = setTimeout(() => {
+                const pw = swipeContainer.clientWidth;
+                if (pw === 0) return;
+                const idx = Math.round(swipeContainer.scrollLeft / pw);
+                updateTabState(idx);
+                if (idx === 2) loadMemoData();
+            }, 50);
+        }, { passive: true });
 
         updateTabState(0);
 
