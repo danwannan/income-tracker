@@ -221,7 +221,7 @@
             50% { opacity: 1; }
         }
 
-        .chart-container { min-height: 380px; height: 380px; }
+        .chart-container { min-height: 320px; height: 320px; }
 
         /* ===== 滑动页面容器 ===== */
         #swipe-container {
@@ -927,7 +927,7 @@
                     text: formatMoney(total),
                     subtext: '总收入',
                     left: 'center',
-                    top: '40%',
+                    top: '42%',
                     textStyle: { fontSize: 18, fontWeight: 'bold', color: '#1f2937' },
                     subtextStyle: { fontSize: 11, color: '#9ca3af' }
                 },
@@ -949,14 +949,20 @@
                     textStyle: { color: '#6b7280', fontSize: 10 },
                     itemWidth: 7,
                     itemHeight: 7,
-                    itemGap: 10,
-                    icon: 'roundRect'
+                    itemGap: 14,
+                    icon: 'roundRect',
+                    formatter: function (name) {
+                        const item = names.map((n, i) => ({ name: n, value: values[i] })).find(d => d.name === name);
+                        if (!item) return name;
+                        const pct = total > 0 ? ((item.value / total) * 100).toFixed(1) : 0;
+                        return name + '  ' + pct + '%';
+                    }
                 },
                 series: [{
                     name: '收入构成',
                     type: 'pie',
-                    radius: ['50%', '70%'],
-                    center: ['50%', '46%'],
+                    radius: ['50%', '72%'],
+                    center: ['50%', '45%'],
                     avoidLabelOverlap: true,
                     itemStyle: {
                         borderRadius: 6,
@@ -964,18 +970,7 @@
                         borderWidth: 3
                     },
                     label: {
-                        show: true,
-                        position: 'outside',
-                        formatter: '{b} {d}%',
-                        fontSize: 10,
-                        color: '#6b7280',
-                        overflow: 'truncate',
-                        width: 60
-                    },
-                    labelLine: {
-                        length: 20,
-                        length2: 16,
-                        lineStyle: { color: '#d1d5db' }
+                        show: false
                     },
                     emphasis: {
                         label: { show: true, fontSize: 13, fontWeight: 'bold', color: '#1f2937' },
