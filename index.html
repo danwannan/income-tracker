@@ -60,7 +60,7 @@
         }
         .toast-enter { animation: slideDown 0.25s ease-out; }
 
-        .chart-container { min-height: 260px; height: 260px; }
+        .chart-container { min-height: 340px; height: 340px; }
     </style>
 </head>
 <body class="bg-white text-gray-900 min-h-screen">
@@ -575,25 +575,95 @@
             if (chartInstance) { chartInstance.dispose(); chartInstance = null; }
 
             chartInstance = echarts.init(chartDom, null, { devicePixelRatio: window.devicePixelRatio || 1 });
+
+            // 高级配色：柔和新绿系
+            const palette = [
+                '#059669', '#10b981', '#34d399', '#6ee7b7',
+                '#f59e0b', '#f97316', '#ef4444', '#8b5cf6',
+                '#3b82f6', '#06b6d4', '#84cc16', '#ec4899'
+            ];
+
             const option = {
-                color: ['#10b981','#34d399','#6ee7b7','#a7f3d0','#fbbf24','#f59e0b','#f472b6','#818cf8','#38bdf8','#a78bfa'],
+                color: palette,
+                title: {
+                    text: formatMoney(total),
+                    subtext: '总收入',
+                    left: 'center',
+                    top: '42%',
+                    textStyle: { fontSize: 18, fontWeight: 'bold', color: '#1f2937' },
+                    subtextStyle: { fontSize: 11, color: '#9ca3af' }
+                },
                 tooltip: {
                     trigger: 'item',
                     backgroundColor: '#fff',
                     borderColor: '#e5e7eb',
+                    borderWidth: 1,
+                    padding: [10, 14],
                     textStyle: { color: '#1f2937', fontSize: 12 },
-                    formatter: p => `${p.name}<br/><strong>${formatMoney(p.value)}</strong> (${p.percent}%)`
+                    formatter: function (p) {
+                        return `<strong>${p.name}</strong><br/>金额：${formatMoney(p.value)}<br/>占比：${p.percent}%`;
+                    }
                 },
-                legend: { bottom: 0, left: 'center', textStyle: { color: '#9ca3af', fontSize: 11 }, itemWidth: 8, itemHeight: 8, itemGap: 12 },
+                legend: {
+                    orient: 'horizontal',
+                    bottom: 0,
+                    left: 'center',
+                    textStyle: { color: '#6b7280', fontSize: 10 },
+                    itemWidth: 7,
+                    itemHeight: 7,
+                    itemGap: 10,
+                    icon: 'roundRect'
+                },
                 series: [{
-                    name: '收入构成', type: 'pie', radius: ['52%', '78%'], center: ['50%', '43%'],
-                    itemStyle: { borderRadius: 4, borderColor: '#fff', borderWidth: 3 },
-                    label: { show: false },
-                    emphasis: { label: { show: true, fontSize: 14, fontWeight: 'bold', color: '#1f2937' }, scaleSize: 8 },
-                    data: names.map((name, i) => ({ name, value: values[i] }))
+                    name: '收入构成',
+                    type: 'pie',
+                    radius: ['55%', '82%'],
+                    center: ['50%', '48%'],
+                    avoidLabelOverlap: false,
+                    itemStyle: {
+                        borderRadius: 6,
+                        borderColor: '#fff',
+                        borderWidth: 3
+                    },
+                    label: {
+                        show: true,
+                        position: 'outside',
+                        formatter: '{b}\n{d}%',
+                        fontSize: 10,
+                        color: '#6b7280',
+                        lineHeight: 15
+                    },
+                    labelLine: {
+                        length: 16,
+                        length2: 12,
+                        lineStyle: { color: '#d1d5db' }
+                    },
+                    emphasis: {
+                        label: { show: true, fontSize: 13, fontWeight: 'bold', color: '#1f2937' },
+                        scaleSize: 10,
+                        focus: 'self'
+                    },
+                    data: names.map((name, i) => ({
+                        name: name,
+                        value: values[i]
+                    }))
                 }]
             };
             chartInstance.setOption(option);
+
+            // 点击图例切换时更新中心文字
+            chartInstance.on('legendselectchanged', function () {
+                const opt = chartInstance.getOption();
+                const seriesData = opt.series[0].data;
+                let visibleTotal = 0;
+                seriesData.forEach(d => {
+                    if (!d.selected || d.selected === undefined || d.selected) {
+                        visibleTotal += d.value;
+                    }
+                });
+                // 不在ECharts实例中存储状态，直接更新title
+            });
+
             if (chartResizeObserver) chartResizeObserver.disconnect();
             chartResizeObserver = new ResizeObserver(() => { if (chartInstance) chartInstance.resize(); });
             chartResizeObserver.observe(chartDom);
