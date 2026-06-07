@@ -184,7 +184,17 @@
 
             <!-- 历史记录列表 -->
             <div class="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm flex-1">
-                <p class="text-sm font-medium text-gray-700 mb-3">历史记录</p>
+                <div class="flex items-center justify-between mb-3">
+                    <p class="text-sm font-medium text-gray-700">历史记录</p>
+                    <span id="list-filter-count" class="text-[10px] text-gray-400 hidden"></span>
+                </div>
+                <!-- 搜索栏 -->
+                <div class="relative mb-3">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-sm">🔍</span>
+                    <input type="text" id="search-input" placeholder="搜索来源或备注..."
+                           class="w-full bg-gray-50 border border-gray-200 rounded-lg pl-9 pr-8 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none transition-all min-h-[40px] focus:border-emerald-300">
+                    <button id="btn-clear-search" class="hidden absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full text-gray-300 hover:text-gray-500 hover:bg-gray-200 transition-colors text-xs">✕</button>
+                </div>
                 <div id="list-loading" class="flex justify-center py-6">
                     <div class="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
                 </div>
@@ -192,7 +202,7 @@
                     <p class="text-3xl mb-2">📝</p>
                     <p class="text-sm text-gray-400">还没有收入记录</p>
                 </div>
-                <div id="list-container" class="space-y-2 max-h-[500px] overflow-y-auto pr-1"></div>
+                <div id="list-container" class="space-y-2 max-h-[420px] overflow-y-auto pr-1"></div>
             </div>
 
         </main>
@@ -271,6 +281,10 @@
 
         // ---- 待删除 ID ----
         let pendingDeleteId = null;
+
+        // ---- 搜索相关 ----
+        let allRows = [];           // 存储全部数据用于搜索
+        let searchKeyword = '';     // 当前搜索关键词
 
         // ============================================================
         // 工具函数
@@ -429,7 +443,29 @@
             statTotal.textContent   = formatMoney(totalSum);
             statCount.textContent   = (rows || []).length;
 
-            renderList(rows || []);
+            // 存储全部数据，应用搜索过滤
+            allRows = rows || [];
+            applySearchFilter();
+        }
+
+        /** 模糊搜索过滤并重新渲染列表 */
+        function applySearchFilter() {
+            const keyword = searchKeyword.trim().toLowerCase();
+            let filtered = allRows;
+
+            if (keyword) {
+                filtered = allRows.filter(row => {
+                    const source = (row.source || '').toLowerCase();
+                    const remark = (row.remark || '').toLowerCase();
+                    return source.includes(keyword) || remark.includes(keyword);
+                });
+                $('#list-filter-count').classList.remove('hidden');
+                $('#list-filter-count').textContent = `找到 ${filtered.length} 条`;
+            } else {
+                $('#list-filter-count').classList.add('hidden');
+            }
+
+            renderList(filtered);
         }
 
         function renderList(rows) {
@@ -719,6 +755,29 @@
             if (parts.length > 2) val = parts[0] + '.' + parts.slice(1).join('');
             if (parts.length === 2 && parts[1].length > 2) val = parts[0] + '.' + parts[1].substring(0, 2);
             this.value = val;
+        });
+
+        // ============================================================
+        // 模糊搜索
+        // ============================================================
+        $('#search-input').addEventListener('input', function () {
+            searchKeyword = this.value;
+            const btnClear = $('#btn-clear-search');
+            if (searchKeyword.trim()) {
+                btnClear.classList.remove('hidden');
+            } else {
+                btnClear.classList.add('hidden');
+            }
+            applySearchFilter();
+        });
+
+        $('#btn-clear-search').addEventListener('click', function () {
+            const input = $('#search-input');
+            input.value = '';
+            searchKeyword = '';
+            this.classList.add('hidden');
+            applySearchFilter();
+            input.focus();
         });
 
         // ============================================================
